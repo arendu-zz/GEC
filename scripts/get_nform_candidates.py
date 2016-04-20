@@ -5,6 +5,7 @@ import codecs
 from optparse import OptionParser
 from pattern.en import pluralize, singularize, suggest
 import enchant
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.stdin = codecs.getreader('utf-8')(sys.stdin)
@@ -27,10 +28,9 @@ if __name__ == '__main__':
     nounforms = {}
     for pos_line, sent_line in zip(pos_lines, sent_lines):
         for pos, word in zip(pos_line.strip().split(), sent_line.strip().split()):
-            legal_word = d.check(word)
-            if word in nounforms:
+            if word in nounforms or not d.check(word):
                 continue
-            if legal_word and (pos == 'NN' or pos == 'NNS' or pos== 'NNP' or pos == 'NNPS'):
+            if pos == 'NN' or pos == 'NNS' or pos == 'NNP' or pos == 'NNPS':
                 if pos == 'NN' or pos == 'NNP':
                     word_s = word
                     word_pl = pluralize(word_s)
