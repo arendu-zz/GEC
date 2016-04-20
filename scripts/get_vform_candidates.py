@@ -20,11 +20,12 @@ def main():
             assert len(tokens) == len(postags)
 
             for pos_i, token_i in zip(postags, tokens):
-                if not lemma(token_i) in token_dict and pos_i[0:2]=='VB': 
+                #if not lemma(token_i) in token_dict and pos_i[0:2]=='VB': 
+                if not token_i in token_dict and pos_i[0:2]=='VB': 
                     candidates = lexeme(token_i)
                     filtered = [c for c in candidates if (("n't" not in c) and (len(c.split())==1) and d.check(c))]
                     if len(filtered) >0:
-                        print token_i, " ".join(filtered)
+                        print token_i.lower(), " ".join(filtered)
                     token_dict[lemma(token_i)] = 1
             l += 1
 
