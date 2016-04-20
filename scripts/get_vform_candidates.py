@@ -25,7 +25,7 @@ def main():
                     candidates = lexeme(token_i)
                     filtered = [c for c in candidates if (("n't" not in c) and (len(c.split())==1) and d.check(c))]
                     if len(filtered) >0:
-                        print token_i.lower(), " ".join(filtered)
+                        print token_i, " ".join(filtered)
                     token_dict[lemma(token_i)] = 1
             l += 1
 
