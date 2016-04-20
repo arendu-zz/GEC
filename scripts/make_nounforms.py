@@ -3,8 +3,7 @@ __author__ = 'arenduchintala'
 import sys
 import codecs
 from optparse import OptionParser
-from pattern.en import pluralize, singularize
-
+from pattern.en import pluralize, singularize, suggest
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.stdin = codecs.getreader('utf-8')(sys.stdin)
@@ -14,21 +13,22 @@ sys.stdout.encoding = 'utf-8'
 if __name__ == '__main__':
     opt = OptionParser()
     # insert options here
-    opt.add_option('-f', dest='m2_mod', default='')
+    opt.add_option('-f', dest='m2_raw', default='')
     opt.add_option('-p', dest='pos', default='')
     (options, _) = opt.parse_args()
-    if options.m2_mod == '' or options.pos == '':
-        sys.stderr.write("Usage: python make_nounforms.py -f [gec file] -p [pos file] > [output file]\n")
+    if options.m2_raw == '' or options.pos == '':
+        sys.stderr.write("Usage: python make_nounforms.py -f [gec raw file] -p [pos file] > [output file]\n")
         exit(1)
     else:
         pass
     pos_lines = codecs.open(options.pos, 'r', 'utf8').readlines()
-    sent_lines = [' '.join(line.split()[1:]) for line in codecs.open(options.m2_mod, 'r', 'utf8').readlines() if
-                  line.strip() != '' and line[0] == 'S']
+    sent_lines = codecs.open(options.m2_raw, 'r', 'utf8').readlines()
     nounforms = {}
-    for pos_line, sent_line in zip(pos_lines, sent_lines):
-        for pos, word in zip(pos_line.split(), sent_line.split()):
-            if pos == 'NN' or pos == 'NNS':
+    for pos_line, sent_line in zip(pos_lines, sent_lines)[:10]:
+        for pos, word in zip(pos_line.strip().split(), sent_line.strip().split()):
+            legal_word = len(suggest(word)) == 1
+            already_done = word in nounforms
+            if not already_done and legal_word and (pos == 'NN' or pos == 'NNS'):
                 if pos == 'NN':
                     word_s = word
                     word_pl = pluralize(word_s)
