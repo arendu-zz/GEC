@@ -56,8 +56,8 @@ if __name__ == '__main__':
     pf = [item.strip() for item in codecs.open(options.pf_file, 'r', 'utf8').readlines() if item.strip() != '']
     prof = [item.strip() for item in codecs.open(options.prof_file, 'r', 'utf8').readlines() if item.strip() != '']
     for sent, pos_sent in zip(sent_list, pos_list):
-        sys.stderr.write('sent:' + sent)
-        sys.stderr.write('pos:' + pos_sent)
+        #sys.stderr.write('sent:' + sent)
+        #sys.stderr.write('pos:' + pos_sent)
         trellis = []
         trellis.append([BOS])
         words = sent.strip().split()
