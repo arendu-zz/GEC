@@ -20,9 +20,11 @@ if __name__ == '__main__':
     else:
         pass
     edits = [e.strip() for e in codecs.open(options.mod_file, 'r', 'utf8').read().split('\n\n')]
+
     for e in edits:
         lines = e.split('\n')
         sentence = lines[0][1:].strip().split()
+        new_sentence = [s for s in sentence]
         for l in lines[1:]:
             items = l.split('|||')
             t,s,e = items[0].split()
@@ -31,6 +33,8 @@ if __name__ == '__main__':
             c = items[1]
             replaced = items[2]
             if replaced == '' and c in ['ArtOrDet', 'Prep']:
-                print c, ' '.join(sentence[s-1 : e+1]), ':', ' '.join(sentence[s-1:s] + sentence[e:e+1])
-                sys.stderr.write(' '.join(sentence) + ':' + str(s) +',' + str(e) + '\n')
+                new_sentence[s] = '<eps>'
+                #print c + '\t' +  ' '.join(sentence[s-1 : e+1]) + '\t' + ' '.join(sentence[s-1:s] + ['<eps>'] + sentence[e:e+1])
+        print ' '.join(new_sentence) 
+            
 

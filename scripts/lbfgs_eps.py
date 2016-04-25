@@ -23,9 +23,9 @@ def ls_obj(x):
 def ls_grad(x):
     global A,b
     x_r = np.reshape(x, (np.size(x),1))
-    print A.shape, x.shape, x_r.shape, b.shape
+    #print A.shape, x.shape, x_r.shape, b.shape
     g_x = 2 * A.T.dot(A.dot(x_r) - b)
-    print g_x.shape
+    #print g_x.shape
     g_x = np.reshape(g_x, (np.size(x),))
     return g_x
 
@@ -85,6 +85,5 @@ if __name__ == '__main__':
     x_solution = minimize(ls_obj, x,method='L-BFGS-B', jac=ls_grad,tol=1e-5)
     print x_solution
     print 'check '
-    gradient_checking(np.zeros((4,1)), 1e-4, ls_obj)
+    g_x_approx = gradient_checking(np.zeros((4,1)), 1e-4, ls_obj)
     g_x = ls_grad(np.zeros((4,1)))
-    print 'check g', g_x
