@@ -39,8 +39,7 @@ def lm_features(lm, pc, cc):
 		s = lm_score(lm, w1, w2)
 		sys.stderr.write( w1 + '|' + w2 + '-' + str(s) + " s\n")
 		lms += s
-		features.append(('LM-'+w1 +'-' + w2, s))
-	features.append(('LM-' + '-'.join(w_list), lms))
+	features.append(('LM-C1-C2-' + '-'.join(w_list), lms))
 	features.append(('LM-', lms))
 	return '\t'.join([f + '\t' + str(f_val) for f,f_val in features  ])
 
