@@ -14,6 +14,38 @@ sys.stdout.encoding = 'utf-8'
 BOS = '<s>'
 EOS = '</s>'
 
+def emission_features(p, w, cc):
+    features = []
+    cc_list = [c.strip() for c in cc.strip().split()]
+    if cc_list == 2:
+        features.append(w + '-' + cc_list[0] + '-inserted')
+        features.append(cc_list[0] + '-inserted')
+        features.append(w + '-' + cc_list[0])
+        features.append(w + '-' + cc_list[1])
+    if cc_list == 1:
+        features.append(w +'-' + cc_list[0])
+    return '\t'.join([f + '\t' + '1.0' for f in features])
+
+def bigram_features(pc, cc):
+    features = []
+    pc_list = [c.strip() for c in pc.strip().split()]
+    cc_list = [c.strip() for c in cc.strip().split()]
+    if len(cc_list) == 1 and cc_list[0] == '<eps>':
+        features.append('RC-' + ' '.join(pc_list) + '-<eps>')
+
+    if len(pc_list) == 1 and pc_list[0] == '<eps>':
+        features.append('LC-'+ ' '.join(cc_list) + '-<eps>')
+
+    if len(cc_list) == 2 and len(pc_list) == 2:
+        features.append('prev-ins-'pc_list[0]+'-curr-ins-'+cc_list[0])
+    elif len(cc_list) == 2 and len(pc_list) ==1:
+        features.append('curr-ins-'+cc_list[0])
+    elif len(cc_list) == 1 and len(pc_list) == 2:
+        features.append('prev-ins-'pc_list[0])
+    else:
+        pass
+    return '\t'.join([f + '\t' + '1.0' for f in features])
+
 if __name__ == '__main__':
     opt = OptionParser()
     # insert options here
@@ -44,9 +76,11 @@ if __name__ == '__main__':
     else:
         pass
     d = enchant.Dict('en_US')
-    sys.stderr.write('loading bigrams...')
-    giga_bigrams = dict((items.split('\t')[1].lower(),float(items.split('\t')[0])) for items in codecs.open(options.bigram_file, 'r', 'utf8').readlines()) 
-    giga_unigrams = dict((items.split('\t')[1].lower(),float(items.split('\t')[0])) for items in codecs.open(options.unigram_file, 'r', 'utf8').readlines()) 
+    sys.stderr.write('loading unigrams...')
+    giga_unigrams = dict((items.strip().split('\t')[1], float(items.strip().split('\t')[0])) for items in codecs.open(options.unigrams_file, 'r', 'utf8').readlines())
+    sys.stderr.write('reading bigrams...\n')
+    giga_bigrams =  dict((items.strip().split('\t')[1], float(items.strip().split('\t')[0])) for items in codecs.open(options.bigrams_file, 'r', 'utf8').readlines())
+    deletions = {}
     seen = {}
     sent_list = codecs.open(options.gec_raw_file, 'r', 'utf8').readlines()
     pos_list = codecs.open(options.gec_pos_file, 'r', 'utf8').readlines()
@@ -55,8 +89,9 @@ if __name__ == '__main__':
     df = [item.strip() for item in codecs.open(options.df_file, 'r', 'utf8').readlines()  if item.strip() != '']
     pf = [item.strip() for item in codecs.open(options.pf_file, 'r', 'utf8').readlines() if item.strip() != '']
     prof = [item.strip() for item in codecs.open(options.prof_file, 'r', 'utf8').readlines() if item.strip() != '']
+    all_candidates = []
     for sent, pos_sent in zip(sent_list, pos_list):
-        #sys.stderr.write('sent:' + sent)
+        sys.stderr.write('sent:' + sent)
         #sys.stderr.write('pos:' + pos_sent)
         trellis = []
         trellis.append([BOS])
@@ -116,10 +151,13 @@ if __name__ == '__main__':
                 assert pc != EOS
                 for cc in current_candidates:
                     assert cc != BOS
-                    print_line = pc + ' ||| '+ cc
-                    if print_line in seen:
-                        pass
-                    else:
-                        seen[print_line] = 1
-                        print print_line
+                    lm_score = get_lm_score(pc, cc)
+                    emission_state = 'EMISSION ### ' + w + ' ### ' + cc
+                    bigram_state = 'BIGRAM ### ' + pc + ' ### ' + cc 
+                    if not emission_state in seen:
+                        seen[emission_state] = 1
+                        print emission_state +' ### '+ emission_features(p, w,cc) 
+                    if not bigram_state in seen:
+                        seen[bigram_state] = 1
+                        print bigram_state + ' ### ' + bigram_features(pc, cc)
     sys.stderr.write('done\n')

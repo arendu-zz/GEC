@@ -24,28 +24,27 @@ def emission_features(p, w, cc):
         features.append(w + '-' + cc_list[1])
     if cc_list == 1:
         features.append(w +'-' + cc_list[0])
-    return ' '.join([f + ' ' + '1.0' for f in features])
+    return '\t'.join([f + '\t' + '1.0' for f in features])
 
-def bigram_features(prev_p, p, pc, cc, w):
+def bigram_features(pc, cc):
     features = []
     pc_list = [c.strip() for c in pc.strip().split()]
     cc_list = [c.strip() for c in cc.strip().split()]
-
     if len(cc_list) == 1 and cc_list[0] == '<eps>':
-        features.append('-'.join(['DEL','LC', 'W' , pc_list[0], w , '<eps>']))
-        features.append('-'.join(['DEL','LC', pc_list[0], '<eps>']))
-        features.append('-'.join(['DEL','W', w, '<eps>']))
-
-    if len(cc_list) == 2:
-        inserted = cc_list[0]
-        features.append('-'.join(['INS','LC', 'W' , pc_list[0], w , inserted]))
-        features.append('-'.join(['INS','LC', pc_list[0], inserted]))
-        features.append('-'.join(['INS','W', w, inserted]))
+        features.append('RC-' + ' '.join(pc_list) + '-<eps>')
 
     if len(pc_list) == 1 and pc_list[0] == '<eps>':
-        features.append('-'.join(['DEL','RC', cc_list[0], '<eps>']))
+        features.append('LC-'+ ' '.join(cc_list) + '-<eps>')
 
-    return ' '.join([f + ' ' + '1.0' for f in features])
+    if len(cc_list) == 2 and len(pc_list) == 2:
+        features.append('prev-ins-'+pc_list[0]+'-curr-ins-'+cc_list[0])
+    elif len(cc_list) == 2 and len(pc_list) ==1:
+        features.append('curr-ins-'+cc_list[0])
+    elif len(cc_list) == 1 and len(pc_list) == 2:
+        features.append('prev-ins-'+pc_list[0])
+    else:
+        pass
+    return '\t'.join([f + '\t' + '1.0' for f in features])
 
 if __name__ == '__main__':
     opt = OptionParser()
@@ -99,11 +98,10 @@ if __name__ == '__main__':
         words = sent.strip().split()
         pos = pos_sent.strip().split()
         for i, (w, p) in enumerate(zip(words, pos)):
-            prev_p = pos[i-1] if i > 0 else None
             #sys.stderr.write('word:' + w + ' pos:' + p + '\n')
             if p.startswith('VB') and d.check(w) and w in vf:
                 #sys.stderr.write('in vf\n')
-
+              
                 trellis.append(vf[w])
             elif p.startswith('DT') or p.startswith('RB'):
                 #sys.stderr.write('in dt or rb\n')
@@ -154,12 +152,12 @@ if __name__ == '__main__':
                 for cc in current_candidates:
                     assert cc != BOS
                     #lm_score = get_lm_score(pc, cc)
-                    #emission_state = 'EMISSION ### ' + w + ' ### ' + cc
+                    emission_state = 'EMISSION ### ' + w + ' ### ' + cc
                     bigram_state = 'BIGRAM ### ' + pc + ' ### ' + cc 
-                    #if not emission_state in seen:
-                    #    seen[emission_state] = 1
-                    #    print emission_state +' ### '+ emission_features(p, w,cc) 
+                    if not emission_state in seen:
+                        seen[emission_state] = 1
+                        print emission_state +' ### '+ emission_features(p, w,cc) 
                     if not bigram_state in seen:
                         seen[bigram_state] = 1
-                        print bigram_state + ' ### ' + bigram_features(prev_p, p, pc, cc, w)
+                        print bigram_state + ' ### ' + bigram_features(pc, cc)
     sys.stderr.write('done\n')
