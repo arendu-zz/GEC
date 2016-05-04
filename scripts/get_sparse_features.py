@@ -111,7 +111,7 @@ if __name__ == '__main__':
             elif p.startswith('NN') and d.check(w) and w in nf:
                 #sys.stderr.write('in nn\n')
                 #sys.stderr.write('len(nf[w]) ' + str(len(nf[w])) + '\n')
-                detxnf = [' '.join(item).strip() for item in itertools.product(df, nf[w])]
+                detxnf = [' '.join(item).strip() for item in itertools.product([_ for _ in df if _ != '<eps>'], nf[w])]
                 if w.lower() in giga_unigrams:
                     detxnf = [dbigram for dbigram in detxnf if dbigram.lower() in giga_bigrams] 
                 else:
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                 trellis.append(detxnf)
             elif p.startswith('JJ'):
                 #sys.stderr.write('in jj\n')
-                detxjj = [' '.join(item).strip() for item in itertools.product(df, [w])]
+                detxjj = [' '.join(item).strip() for item in itertools.product([_ for _ in df if _ != '<eps>'], [w])]
                 if w.lower() in giga_unigrams:
                     detxjj = [dbigram for dbigram in detxjj if dbigram.lower() in giga_bigrams]
                 else:
