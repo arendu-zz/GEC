@@ -1,5 +1,6 @@
 __author__ = 'arenduchintala'
 import sys
+import codecs
 from optparse import OptionParser
 
 import edu.jhu.hlt.optimize.AdaGradComidL2.AdaGradComidL2Prm as AdaGradComidL2Prm
@@ -23,6 +24,7 @@ factor_cell_to_features = {}
 feature_label2id = {}
 DET = 'the a an another no the a an no another some any my our their her his its another no each every certain its another no this that'.split()
 PP = 'of in to for with on at from by about as into like through after over between out against during without before under around among'.split()
+global fl2id, id2fl, id2fval, event2fl
 
 
 class ObservedFactor(ExplicitExpFamFactor):
@@ -105,6 +107,10 @@ def generate_correction_candidates(pos, word):
     return candidates
 
 
+def make_gec_instancs(raw_file, pos_file, mod_file):
+    instances = FgExampleMemoryStore()
+    pass
+
 def make_instances(txt_file, tag_list, obs_list):
     instances = FgExampleMemoryStore()
     text_train = [t.strip() for t in open(txt_file).read().split('###/###') if t.strip() != '']
@@ -143,23 +149,39 @@ def make_instances(txt_file, tag_list, obs_list):
     return instances
 
 
-def load_factor_features(txt_file):
-    to, factors = open(txt_file).read().split('FACTORS:')
-    to = to.strip()
-    tag_list = list(set(to.split('\n')[0].split()))
-    obs_list = list(set(to.split('\n')[1].split()))
-    fac_cell_2feat = {}
-    feat2id = {}
-    for features_fired_in_factor in factors.strip().split('FACTOR:'):
-        feature_lines = features_fired_in_factor.strip().split('\n')
-        fac_type = feature_lines[0].strip()
-        for fl in feature_lines[1:]:
-            items = fl.split()
-            label1, label2 = items[0], items[1]
-            fac_cell_2feat[fac_type, label1, label2] = [(f_name, 1.0) for f_name in items[2:]]
-            for f_fired in items[2:]:
-                feat2id[f_fired] = feat2id.get(f_fired, len(feat2id))
-    return tag_list, obs_list, fac_cell_2feat, feat2id
+def load_features(sparse_feats_file, lm_feats_file):
+    global fl2id, id2fval, id2fl, event2fl
+    fl2id = {}
+    id2fl = {}
+    id2fval = {}
+    event2fl = {}
+    with codecs.open(sparse_feats_file, 'r', 'utf8') as f:
+        for line in f:
+            factor_type, c1, c2, sf = line.split('###')
+            f_labels = [f_name.strip() for idx, f_name in enumerate(sf.split()) if idx % 2 == 0]
+            f_vals = [float(f_val.strip()) for idx, f_val in enumerate(sf.split()) if idx % 2 == 1]
+            event = (factor_type.strip(), c1.strip(), c2.strip())
+            for fl, fv in zip(f_labels, f_vals):
+                fl2id[fl] = fl2id.get(fl, len(fl2id))
+                id2fl[fl2id[fl]] = fl
+                id2fval[fl2id[fl]] = fv
+            f_fired = event2fl.get(event, set([]))
+            f_fired.update(f_labels)
+            event2fl[event] = f_fired
+    with codecs.open(lm_feats_file, 'r', 'utf8') as f:
+        for line in f:
+            factor_type, c1, c2, lmf = line.split('###')
+            f_labels = [f_name.strip() for idx, f_name in enumerate(lmf.split()) if idx % 2 == 0]
+            f_vals = [float(f_val.strip()) for f_val in enumerate(lmf.split()) if idx % 2 == 1]
+            event = (factor_type.strip, c1.strip(), c2.strip())
+            for fl, fv in zip(f_labels, f_vals):
+                fl2id[fl] = fl2id.get(fl, len(fl2id))
+                id2fl[fl2id[fl]] = fl
+                id2fval[fl2id[fl]] = fv
+            f_fired = event2fl.get(event, set([]))
+            f_fired.update(f_labels)
+            event2fl[event] = f_fired
+    return fl2id, id2fl, id2fval, event2fl
 
 
 if __name__ == '__main__':
@@ -167,14 +189,44 @@ if __name__ == '__main__':
     # insert options here
     opt.add_option('--test', dest='test_file', default='')
     opt.add_option('--train', dest='train_file', default='')
-    opt.add_option('--feats', dest='feats_file', default='')
+    opt.add_option('--pos', dest='pos_file', default='')
+    opt.add_option('--nf', dest='nf_file', default='')
+    opt.add_option('--vf', dest='vf_file', default='')
+    opt.add_option('--prof', dest='prof_file', default='')
+    opt.add_option('--df', dest='df_file', default='')
+    opt.add_option('--pref', dest='pref_file', default='')
+    opt.add_option('--lm-feats', dest='lm_feats_file', default='')
+    opt.add_option('--sparse-feats', dest='sparse_feats_file', default='')
     (options, _) = opt.parse_args()
-    if options.feats_file == '' or options.train_file == '' or options.test_file == '':
-        sys.stderr.write("Usage: jython tagger-gec.py --feats [feats file] --train [train file] --test [test file]\n")
+    if options.sparse_feats_file == '' or \
+                    options.lm_feats_file == '' or \
+                    options.pos_file == '' or\
+                    options.nf_file == '' or\
+                    options.vf_file == '' or\
+                    options.prof_file == '' or\
+                    options.df_file == '' or\
+                    options.pref_file == '' or \
+                    options.train_file == '' or\
+                    options.test_file == '':
+        sys.stderr.write("Usage: jython tagger-gec.py "
+                         "--train [train file]\n"
+                         "--test [test file]\n"
+                         "--pos [pos version of train file]\n"
+                         "--nf [noun candidates]\n"
+                         "--vf [verb candidates]\n"
+                         "--prof [pronoun candidates]\n"
+                         "--df [artordet candidates]\n"
+                         "--pref [prep candidates]\n"
+                         " --lm-feats [lm feats file]\n")
+
         exit(1)
-    tag_list, obs_list, factor_cell_to_features, feature_label2id = load_factor_features(options.feats_file)
+    else:
+        pass
+
+    fl2id, id2fl, id2fval, event2fl = load_features(options.sparse_feats_file, options.lm_feats_file)
     sys.stderr.write("prepare training instances... \n")
-    training_instances = make_instances(options.train_file, tag_list, obs_list)
+    exit(1)
+    training_instances = make_instances(options.train_file)
     trainer = CrfTrainer(get_trainer_prm())
     factor_graph_model = FgModel(len(feature_label2id))
     sys.stderr.write("training... \n")
