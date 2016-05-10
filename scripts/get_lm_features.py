@@ -139,8 +139,11 @@ if __name__ == '__main__':
 				assert len(detxjj) > 0
 				trellis.append(detxjj)
 			elif p.startswith('PRP'):
+				#Pronouns
 				#sys.stderr.write('in prp\n')
 				trellis.append(prof)
+			elif p.startseith('IN') and w in pf:
+				trellis.append(pf) 
 			else:
 				#sys.stderr.write(w + ' is not in any pos tag...\n')
 				trellis.append([w])
