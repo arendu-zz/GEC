@@ -49,7 +49,7 @@ class ObservedFactor(ExplicitExpFamFactor):
 		feats = zip(*feat_idxs)
 		return FeatureVector(list(feats[0]), list(feats[1]))
 
-
+		
 class CRFFactor(ExplicitExpFamFactor):
 	def __init__(self, varset, var_list, factor_type):
 		ExplicitExpFamFactor.__init__(self, varset)
@@ -57,6 +57,7 @@ class CRFFactor(ExplicitExpFamFactor):
 		self.factor_type = factor_type
 
 	def getFeatures(self, configuration_id):
+		global fl2id, id2fl, id2fval, event2fl
 		vs = self.getVars()
 		configuration = vs.getVarConfig(configuration_id)
 		state1 = configuration.getStateName(self.var_list[0])
@@ -64,15 +65,11 @@ class CRFFactor(ExplicitExpFamFactor):
 		# print 'vs:' , vs.calcNumConfigs()
 		# print 'config_id:', configuration_id, 'config:' , state1, state2, self.factor_type
 		# print 'vars:' , self.var_list[0].name, self.var_list[1].name
-		feats_fired = factor_cell_to_features[(self.factor_type, state1, state2)]
-		feat_idxs = [(feature_label2id[f_label], f_val) for f_label, f_val in feats_fired]
-		feats = zip(*feat_idxs)
-		return FeatureVector(list(feats[0]), list(feats[1]))
+		feats_fired = event2fl[(self.factor_type, state1, state2)]
+		feat_ids = [fl2id[fl] for fl in feats_fired]
+		feat_vals = [id2val[f_idx] for f_idx in feat_ids]
+		return FeatureVector(feat_ids, feat_vals)
 
-
-class Clamper(ClampFactor):
-	def __init__(self, var, var_state):
-		ClampFactor.__init__(self, var, var_state)
 
 
 # This method tweaks a few defaults on the CrfTrainer, but isn't
@@ -100,7 +97,11 @@ def get_trainer_prm():
 def generate_correction_candidates(p, w, c = None):
 	global nf, vf, df, prof, pf
 	candidates = []
-	if p.startswith('JJ'):
+	if w == EOS:
+		candidates = [EOS]
+	elif w == BOS:
+		candidates = [BOS]
+	elif p.startswith('JJ'):
 		detxjj = [' '.join(item).strip() for item in itertools.product([_ for _ in df if _ != '<eps>'], [w])]
 		if w.lower().strip()  in giga_lm:
 			detxjj = [dbigram for dbigram in detxjj if dbigram.lower() in giga_lm]
@@ -137,7 +138,7 @@ def generate_correction_candidates(p, w, c = None):
 	return candidates
 
 
-def make_gec_instancs(raw_file, pos_file, correct_file=None):
+def make_gec_instances(raw_file, pos_file, correct_file=None):
 	global nf, vf, df, pf, prof
 	instances = FgExampleMemoryStore()
 	raw_lines = [[BOS] + rl.strip().split() + [EOS] for rl in codecs.open(raw_file, 'r', 'utf8').readlines()]
@@ -153,20 +154,22 @@ def make_gec_instancs(raw_file, pos_file, correct_file=None):
 		vc = VarConfig()
 		prev_hc = None
 		for w_idx, (w,p,c) in enumerate(zip(raw_lines[line_idx], pos_lines[line_idx], correct_lines[line_idx])):
-			candidates = generate_correction_candidate(p,w)	
+			candidates = generate_correction_candidates(p,w)	
+			print w, p, c
+			print 'can', candidates
 			hc = Var(Var.VarType.PREDICTED, len(candidates), "TAG_" + str(w_idx) , candidates)
 			vc.put(hc, c)
 			if prev_hc:
 				t_varset = VarSet(hc)
 				t_varset.add(prev_hc)
-				t_factor = CRFFactor(t_varset, [prev_hc, hc], "TAG-TAG")
+				t_factor = CRFFactor(t_varset, [prev_hc, hc], "BIGRAM")
 				factor_graph.addFactor(t_factor)
 			else:
 				pass
 			prev_hc = hc
 			pass
 		instances.add(LabeledFgExample(factor_graph, vc))
-		return instances
+	return instances
 
 
 def make_instances(txt_file, tag_list, obs_list):
@@ -207,32 +210,13 @@ def make_instances(txt_file, tag_list, obs_list):
 	return instances
 
 
-def make_mod_instances(_file):
-	correct_file = codecs.open(_file, 'r', 'utf8').readlines()
-	for line in correct_file:
-		if line.startswith('S '):
-			sent_tokens = line.split()[1:]
-		elif line.startswith('A '):
-			corrections = line.split('|||')
-			a,st,end = corrections[0].split()
-			st = int(st)
-			end = int(end)
-			correction_type = corrections[1]
-			correction_token = corrections[2]
-
-			#TODO:Continue form here!!!!
-			pass
-		else:
-			pass
-
-	pass
-
 def load_features(sparse_feats_file, lm_feats_file):
 	global fl2id, id2fval, id2fl, event2fl
 	fl2id = {}
 	id2fl = {}
 	id2fval = {}
 	event2fl = {}
+	return fl2id, id2fl, id2fval, event2fl
 	with codecs.open(sparse_feats_file, 'r', 'utf8') as f:
 		for line in f:
 			factor_type, c1, c2, sf = line.strip().split('###')
@@ -243,7 +227,7 @@ def load_features(sparse_feats_file, lm_feats_file):
 				fl2id[fl] = fl2id.get(fl, len(fl2id))
 				id2fl[fl2id[fl]] = fl
 				id2fval[fl2id[fl]] = fv
-			f_fired = event2fl.get(event, set([]))
+			f_fired = event2fl.get(event, set([])) # will never use DefaultDict!
 			f_fired.update(f_labels)
 			event2fl[event] = f_fired
 	with codecs.open(lm_feats_file, 'r', 'utf8') as f:
