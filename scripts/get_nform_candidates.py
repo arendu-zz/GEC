@@ -28,6 +28,7 @@ if __name__ == '__main__':
     nounforms = {}
     for pos_line, sent_line in zip(pos_lines, sent_lines):
         for pos, word in zip(pos_line.strip().split(), sent_line.strip().split()):
+			word = word.lower()
             if word in nounforms or not d.check(word):
                 continue
             if pos == 'NN' or pos == 'NNS' or pos == 'NNP' or pos == 'NNPS':
@@ -42,8 +43,8 @@ if __name__ == '__main__':
                 else:
                     pass
 
-                nounforms[word_s] = [word_s, word_pl]
-                nounforms[word_pl] = [word_s, word_pl]
+                nounforms[word_s] = [w for w in [word_s, word_pl] if d.check(w)]
+                nounforms[word_pl] = [w for w in [word_s, word_pl] if d.check(w)]
             else:
                 sys.stderr.write('skipping:' + str(word) + '\n')
                 pass  # not a noun or noun_pl
