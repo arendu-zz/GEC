@@ -142,7 +142,7 @@ if __name__ == '__main__':
 				#Pronouns
 				#sys.stderr.write('in prp\n')
 				trellis.append(prof)
-			elif p.startseith('IN') and w in pf:
+			elif p.startswith('IN') and w in pf:
 				trellis.append(pf) 
 			else:
 				#sys.stderr.write(w + ' is not in any pos tag...\n')

@@ -156,7 +156,7 @@ def make_gec_instances(raw_file, pos_file, correct_file=None):
 		for w_idx, (w,p,c) in enumerate(zip(raw_lines[line_idx], pos_lines[line_idx], correct_lines[line_idx])):
 			candidates = generate_correction_candidates(p,w)	
 			print w, p, c
-			print 'can', candidates
+			print 'can', candidates, c
 			hc = Var(Var.VarType.PREDICTED, len(candidates), "TAG_" + str(w_idx) , candidates)
 			vc.put(hc, c)
 			if prev_hc:
