@@ -28,7 +28,7 @@ if __name__ == '__main__':
     sent_lines = codecs.open(options.m2_raw, 'r', 'utf8').readlines()
     lemma_lines = codecs.open(options.lemma_file, 'r', 'utf8').readlines()
     nounforms = {}
-    for lemma_lines, pos_line, sent_line in zip(lemma_lines, pos_lines, sent_lines):
+    for lemma_line, pos_line, sent_line in zip(lemma_lines, pos_lines, sent_lines):
         for lem, pos, word in zip(lemma_line.strip().split(),pos_line.strip().split(), sent_line.strip().split()):
             if pos == 'NN' or pos == 'NNS':
                 lem = lem.lower()
