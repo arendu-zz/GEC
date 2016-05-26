@@ -34,11 +34,11 @@ if __name__ == '__main__':
                 lem = lem.lower()
                 if lem in nounforms:
                     continue
-                nforms = [lem,pluralize(lem)] 
-                for n in nforms:
+                nforms = [lem+'|||nsg',pluralize(lem)+'|||npl'] 
+                for n_number in nforms:
+                    n, number = n_number.split('|||')
                     nounforms[n] = nforms
             else:
-                sys.stderr.write('skipping:' + str(word) + ',' + str(pos) +  '\n')
                 pass  # not a noun or noun_pl
 
     for k, v in sorted(nounforms.iteritems()):

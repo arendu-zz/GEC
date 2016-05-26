@@ -11,5 +11,6 @@ set -e
 source ~/.profile
 GEC_HOME="/home/arenduc1/Projects/GEC"
 EXP="/home/arenduc1/export/agiga-deps"
-$GEC_HOME/scripts/get_nform_candidates.py -f $EXP/agiga.medium.raw -l $EXP/agiga.medium.lemma -p $EXP/agiga.medium.pos > $GEC_HOME/data/candidates/agiga.medium.nform_candidates
+SIZE='small'
+$GEC_HOME/scripts/get_nform_candidates.py -f $EXP/agiga.$SIZE.raw -l $EXP/agiga.$SIZE.lemma -p $EXP/agiga.$SIZE.pos > $GEC_HOME/data/candidates/agiga.$SIZE.nform_candidates
 

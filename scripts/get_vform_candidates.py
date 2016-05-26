@@ -3,8 +3,8 @@ __author__ = 'arenduchintala'
 import sys
 import codecs
 from optparse import OptionParser
-from pattern.en import pluralize, singularize, suggest
-from pattern.en import lexeme
+from pattern.en import pluralize, singularize, suggest, conjugate
+from pattern.en import lexeme, lemma
 import enchant
 
 reload(sys)
@@ -13,6 +13,20 @@ sys.stdin = codecs.getreader('utf-8')(sys.stdin)
 sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 sys.stdout.encoding = 'utf-8'
 d = enchant.Dict("en_US")
+TENSE_ASPECTS = ['inf', '1sg', '3sg', 'part', 'p', 'ppart']
+EXCEPTIONS = "am|||1sg are|||2sg is|||3sg are|||pl being|||part were|||p was|||1sgp were|||2sgp was|||3gp were|||ppl been|||ppart".split()
+
+def get_conjugations(lem):
+    vforms = []
+    if lemma(lem) == 'be':
+        vforms = [i for i in EXCEPTIONS]
+    else:
+        for ta in TENSE_ASPECTS:
+            c = conjugate(lemma(lem), ta)
+            vforms.append( c +'|||'+ ta)
+    return vforms
+
+
 if __name__ == '__main__':
     opt = OptionParser()
     # insert options here
@@ -40,13 +54,12 @@ if __name__ == '__main__':
                 vforms = []
                 lem = lem.lower()
                 vforms = lexeme(lem)
-                if word in vforms:
-                    for v in vforms:
-                        verbforms[v] = vforms
-                else:
-                    sys.stderr.write('word not in vforms ' + str(lem)  + ' ' + str(word)+ '\n')
+                vforms = get_conjugations(lem)
+                #vforms = [c for c in vforms if (("n't" not in c) and (len(c.split())==1) and d.check(c))]
+                for v_aspect in vforms:
+                    v,aspect = v_aspect.split('|||')
+                    verbforms[v] = vforms
             else:
-                sys.stderr.write('skipping:' + str(word) + ',' + str(pos) +  '\n')
                 pass  # not a noun or noun_pl
 
     for k, v in sorted(verbforms.iteritems()):
