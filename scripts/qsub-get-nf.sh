@@ -10,5 +10,6 @@ set -e
 . ~/.bashrc
 source ~/.profile
 GEC_HOME="/home/arenduc1/Projects/GEC"
-$GEC_HOME/scripts/get_nform_candidates.py -f $GEC_HOME/data/gec/all.data.raw -p $GEC_HOME/data/gec/all.data.pos > $GEC_HOME/data/candidates/nform_candicates_lower
+EXP="/home/arenduc1/export/agiga-deps"
+$GEC_HOME/scripts/get_nform_candidates.py -f $EXP/agiga.medium.raw -l $EXP/agiga.medium.lemma -p $EXP/agiga.medium.pos > $GEC_HOME/data/candidates/agiga.medium.nform_candidates
 
