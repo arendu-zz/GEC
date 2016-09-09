@@ -23,8 +23,6 @@ from edu.jhu.pacaya.gm.train import CrfTrainer
 # value list of tuples, (feature_label, feature_value)
 factor_cell_to_features = {}
 feature_label2id = {}
-DET = 'the a an another no the a an no another some any my our their her his its another no each every certain its another no this that'.split()
-PP = 'of in to for with on at from by about as into like through after over between out against during without before under around among'.split()
 global fl2id, id2fl, id2fval, event2fl, can2id
 global cl
 BOS = '<s>'
@@ -99,20 +97,22 @@ def get_trainer_prm():
 def get_candidates(cl, w, p):
     return cl.get((w,p), [w])
 
-def make_gec_instances(raw_file, pos_file):
+def make_gec_instances(raw_file, pos_file, aspect_file):
     global cl 
     instances = FgExampleMemoryStore()
     #raw_lines = [[BOS] + rl.strip().split() + [EOS] for rl in codecs.open(raw_file, 'r', 'utf8').readlines()]
     #pos_lines = [[BOS] + pl.strip().split() + [EOS] for pl in codecs.open(pos_file, 'r', 'utf8').readlines()]
-    with codecs.open(raw_file, 'r', 'utf8') as raw_f, codecs.open(pos_file, 'r', 'utf8') as pos_f:
-        for raw_line, pos_line in zip(raw_f, pos_f):
+    with codecs.open(aspect_file, 'r', 'utf8') as aspect_f, codecs.open(raw_file, 'r', 'utf8') as raw_f, codecs.open(pos_file, 'r', 'utf8') as pos_f:
+        for raw_line, pos_line, aspect_line in zip(raw_f, pos_f, aspect_f):
             rl = [BOS] + raw_line.strip().split() + [EOS]         
             pl = [BOS] + pos_line.strip().split() + [EOS]
+            al = [BOS] + aspect_line.strip().split() + [EOS]
             sys.stderr.write('.')
             factor_graph = FactorGraph()
             vc = VarConfig()
             prev_hc = None
-            for w_idx, (w,p) in enumerate(zip(rl,pl)):
+            for w_idx, (w,p,a) in enumerate(zip(rl,pl,al)):
+                #w does not contain aspet
                 candidates = get_candidates(cl, w, p) 
                 if len(candidates) == 1:
                     sys.stderr.write('no cans:' + w + ' ' + p + '\n')
@@ -120,7 +120,8 @@ def make_gec_instances(raw_file, pos_file):
                     pass
 
                 hc = Var(Var.VarType.PREDICTED, len(candidates), "TAG_" + str(w_idx) , candidates)
-                vc.put(hc, w)
+                vc.put(hc, w+'|||'+a)
+                assert w+'|||'+a in candidates
                 if prev_hc:
                     t_varset = VarSet(hc)
                     t_varset.add(prev_hc)
@@ -171,15 +172,24 @@ def make_instances(txt_file, tag_list, obs_list):
         instances.add(LabeledFgExample(factor_graph, vc))
     return instances
 
+def load_candiate_list(candidate_list_file):
+    _cl = {} # local var for candidate list
+    with codecs.open(candidate_list_file, 'r', 'utf8') as f:
+        for line in f:
+            word_and_pos, candidates = line.strip().split('###')
+            word, pos = word_and_pos.split('+++')
+            candidates = candidates.split('+++')
+            _cl[word, pos] =  candidates
+    return _cl
 
-def load_features(sparse_feats_file, lm_feats_file):
+def load_features(sparse_feats_file, lm_feats_file, use_sparse_feats = False, use_lm_features = True):
     global fl2id, id2fval, id2fl, event2fl, can2id
     fl2id = {}
     id2fl = {}
     id2fval = {}
     event2fl = {}
     can2id = {}
-    if False:
+    if use_sparse_feats: 
         with codecs.open(sparse_feats_file, 'r', 'utf8') as f:
             for line in f:
                 factor_type, c1, c2, sf = line.strip().split('###')
@@ -197,22 +207,28 @@ def load_features(sparse_feats_file, lm_feats_file):
                 f_fired = event2fl.get(event, set([])) # will never use DefaultDict!
                 f_fired.update(f_labels)
                 event2fl[event] = f_fired
+    if use_lm_features:
         with codecs.open(lm_feats_file, 'r', 'utf8') as f:
             for line in f:
                 factor_type, c1, c2, lmf = line.strip().split('###')
+                c1 = c1.strip()
+                c2 = c2.strip()
+                factor_type = factor_type.strip()
                 can2id[c1] = can2id.get(c1, len(can2id))
-                can2id[c1.lower()] = can2id.get(c1.lower(), len(can2id))
+                #can2id[c1.lower()] = can2id.get(c1.lower(), len(can2id))
                 can2id[c2] = can2id.get(c2, len(can2id))
-                can2id[c2.lower()] = can2id.get(c2.lower(), len(can2id))
+                #can2id[c2.lower()] = can2id.get(c2.lower(), len(can2id))
+                #TODO: check if we should also add lower cased candidates..
+                #TODO: check if we want to split the word and its aspect...
                 f_labels = [f_name.strip() for idx, f_name in enumerate(lmf.split()) if idx % 2 == 0]
                 f_vals = [float(f_val.strip()) for idx, f_val in enumerate(lmf.split()) if idx % 2 == 1]
-                event = (factor_type.strip, c1.strip(), c2.strip())
+                event = (factor_type, c1, c2) 
                 for fl, fv in zip(f_labels, f_vals):
                     fl2id[fl] = fl2id.get(fl, len(fl2id))
                     id2fl[fl2id[fl]] = fl
                     id2fval[fl2id[fl]] = fv
                 f_fired = event2fl.get(event, set([]))
-                f_fired.update(f_labels)
+                f_fired.update([fl2id[fl] for fl in f_labels])
                 event2fl[event] = f_fired
     else:
         sys.stderr.write('skipping load feats...\n')
@@ -250,13 +266,8 @@ if __name__ == '__main__':
     else:
         pass
 
-    #nf = dict((items.split()[0], items.split()[1:]) for items in codecs.open(options.nf_file, 'r', 'utf8').readlines())
-    #vf = dict((items.split()[0], items.split()[1:]) for items in codecs.open(options.vf_file, 'r', 'utf8').readlines())
-    #df = [item.strip() for item in codecs.open(options.df_file, 'r', 'utf8').readlines()  if item.strip() != '']
-    #pf = [item.strip() for item in codecs.open(options.pf_file, 'r', 'utf8').readlines() if item.strip() != '']
-    #prof = [item.strip() for item in codecs.open(options.prof_file, 'r', 'utf8').readlines() if item.strip() != '']
-    cl = dict((tuple(items.split('###')[0].strip().split('|||')), [i.strip() for i in items.split('###')[1].split('|||')]) for items in codecs.open(options.cl_file, 'r', 'utf8').readlines())
 
+    cl = load_candiate_list(options.cl_file)
     sys.stderr.write("loading features... \n")
     fl2id, id2fl, id2fval, event2fl, can2id = load_features(options.sparse_feats_file, options.lm_feats_file)
     sys.stderr.write("prepare training instances... \n")
